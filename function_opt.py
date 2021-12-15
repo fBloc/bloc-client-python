@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from dataclasses import dataclass
 
 from value_type import ValueType
 
 
-class FunctionOpt(BaseModel):
+@dataclass
+class FunctionOpt:
     key: str
     description: str
     value_type: ValueType

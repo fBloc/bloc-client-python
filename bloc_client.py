@@ -1,9 +1,7 @@
 import os.path
-from _typeshed import Self
 from typing import List, Optional
+from dataclasses import dataclass
 from collections import defaultdict
-
-from pydantic import BaseModel
 
 from internal.http_util import post_to_server
 from function import Function, FunctionGroup
@@ -12,8 +10,8 @@ from internal.rabbitmq import RabbitMQ
 ServerBasicPathPrefix = "/api/v1/client/"
 RegisterFuncPath = "register_functions"
 
-
-class BlocServerConfig(BaseModel):
+@dataclass
+class BlocServerConfig:
     ip: str = ""
     port: int = 0
 
@@ -25,8 +23,8 @@ class BlocServerConfig(BaseModel):
     def socket_address(self) -> str:
         return f'{self.ip}:{self.port}'
 
-
-class RabbitMQServerConfig(BaseModel):
+@dataclass
+class RabbitMQServerConfig:
     user: str = ""
     password: str = ""
     host: str = ""
@@ -40,13 +38,13 @@ class RabbitMQServerConfig(BaseModel):
             self.port == 0 or self.host == ""
         )
 
-
-class ConfigBuilder(BaseModel):
-    server_conf: BlocServerConfig
-    rabbitMQ_conf: RabbitMQServerConfig
+@dataclass
+class ConfigBuilder:
+    server_conf: Optional[BlocServerConfig]=None
+    rabbitMQ_conf: Optional[RabbitMQServerConfig]=None
     rabbit: Optional[RabbitMQ]=None
 
-    def set_server(self, ip: str, port: int) -> Self:
+    def set_server(self, ip: str, port: int) -> 'ConfigBuilder':
         self.server_conf = BlocServerConfig(ip=ip, port=port)
         return self
     
@@ -54,10 +52,10 @@ class ConfigBuilder(BaseModel):
             self,
             user: str, password: str,
             host: str, port: int, v_host: str = ""
-    ) -> Self:
+    ) -> 'ConfigBuilder':
         self.rabbitMQ_conf = RabbitMQServerConfig(
             user=user, password=password,
-            ost=host, port=port, v_host=v_host)
+            host=host, port=port, v_host=v_host)
         return self
     
     def build_up(self):
@@ -71,11 +69,12 @@ class ConfigBuilder(BaseModel):
             self.rabbitMQ_conf.host, self.rabbitMQ_conf.port,
             self.rabbitMQ_conf.v_host)
 
-
-class BlocClient(BaseModel):
-    name: str
-    configBuilder: ConfigBuilder
-    function_groups: List[FunctionGroup]
+@dataclass
+class BlocClient:
+    def __init__(self, name:str) -> None:
+        self.name = name
+        self.function_groups = []
+        self.configBuilder = ConfigBuilder()
 
     def register_function_group(self, new_group_name: str) -> FunctionGroup:
         for i in self.function_groups:
@@ -89,14 +88,17 @@ class BlocClient(BaseModel):
         return os.path.join(
             self.configBuilder.server_conf.socket_address,
             ServerBasicPathPrefix,
-            *sub_paths
-        )
+            *sub_paths)
+    
+    def get_config_builder(self) -> ConfigBuilder:
+        self.configBuilder = ConfigBuilder()
+        return self.configBuilder
 
     # this func have two responsibilities:
     # 1. register local functions to server
     # 2. get server's resp of each function's id. it's needed in consumer to find func by id
-    def register_functions_to_server(self):
-        groupname_map_funcname_map_func_req = defaultdict(lambda: defaultdict(lambda: List[Function]))
+    async def register_functions_to_server(self):
+        groupname_map_funcname_map_func_req = defaultdict(lambda: defaultdict(lambda: []))
         req = {
             "who": self.name,
             "groupName_map_functionName_map_function": groupname_map_funcname_map_func_req}
@@ -107,12 +109,12 @@ class BlocClient(BaseModel):
                 groupname_map_funcname_map_func_req[group_name][j.name].append(
                     Function(
                         name=j.name, 
-                        group_nam=j.name,
+                        group_name=j.name,
                         description=j.description, 
                         ipts=j.ipts,
                         opts=j.opts,
                         process_stages=j.process_stages))
-        groupname_map_funcname_map_func_resp, err = post_to_server(
+        groupname_map_funcname_map_func_resp, err = await post_to_server(
             self.gen_req_server_path(RegisterFuncPath), req)
         if err:
             raise Exception(f"register to server failed: {err}")
@@ -139,4 +141,4 @@ class BlocClient(BaseModel):
             callback_func=self._run_function)
 
     async def run(self):
-        self.register_functions_to_server()
+        await self.register_functions_to_server()

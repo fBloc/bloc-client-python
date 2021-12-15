@@ -15,13 +15,14 @@ class RabbitMQ:
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(
                 host=host, port=port,
-                virtual_host=v_host,
+                # virtual_host=v_host,
                 credentials=pika.PlainCredentials(user, password)
-            ))
+            )
+        )
 
         channel = connection.channel()
         channel.basic_qos(prefetch_count=1)
-        channel.exchange_declare(exchange=ExchangeName, exchange_type='topic')
+        channel.exchange_declare(exchange=ExchangeName, exchange_type='topic', durable=True)
 
         self._channel = channel
     

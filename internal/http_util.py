@@ -1,7 +1,6 @@
 from typing import Optional, Any, Tuple
 
 import httpx
-from pydantic import BaseModel
 
 SucCode = 200
 transport = httpx.AsyncHTTPTransport(
@@ -11,7 +10,7 @@ transport = httpx.AsyncHTTPTransport(
 client = httpx.AsyncClient(timeout=20, transport=transport)
 
 
-class ServerResp(BaseModel):
+class ServerResp:
     status_code: int
     status_msg: str
     data: Any

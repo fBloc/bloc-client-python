@@ -1,25 +1,25 @@
-from pydantic import BaseModel
-from typing import List, Any
+from typing import List, Any, Optional
+from dataclasses import dataclass
 
 from value_type import ValueType
 from select_options import SelectOption
 from formcontrol_type import FormControlType
 
-
-class IptComponent(BaseModel):
+@dataclass
+class IptComponent:
     value_type: ValueType
     formcontrol_type: FormControlType
     hint: str
     default_value: Any
     allow_multi: bool
-    select_options: List[SelectOption]
+    select_options: Optional[List[SelectOption]]=None
+    value: Optional[Any]=None
 
-
-class FunctionIpt(BaseModel):
+@dataclass
+class FunctionIpt:
     key: str
     display: str
     must: bool
-    Components: List[IptComponent]
-
-
+    components: List[IptComponent]
+    
 FunctionIpts = List[FunctionIpt]

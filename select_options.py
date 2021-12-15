@@ -1,7 +1,7 @@
-from enum import Enum
+from dataclasses import dataclass
 from typing import Any
 
-
-class SelectOption(Enum):
+@dataclass
+class SelectOption:
     label: str
     value: Any

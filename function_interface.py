@@ -3,6 +3,7 @@ from typing import List
 
 from function_opt import FunctionOpt
 from function_ipt import FunctionIpt
+from function_run_opt import FunctionRunOpt
 
 
 class FunctionInterface(metaclass=abc.ABCMeta):
@@ -14,12 +15,10 @@ class FunctionInterface(metaclass=abc.ABCMeta):
             hasattr(subclass, 'ipt_config') and 
             callable(subclass.ipt_config) and 
             hasattr(subclass, 'opt_config') and 
-            callable(subclass.opt_config) or 
+            callable(subclass.opt_config) and 
+            hasattr(subclass, 'run') and 
+            callable(subclass.run) or 
             NotImplemented)
-
-    @abc.abstractmethod
-    def run(self) -> List[FunctionIpt]:
-        raise NotImplementedError
 
     @abc.abstractmethod
     def ipt_config(self) -> List[FunctionIpt]:
@@ -31,4 +30,8 @@ class FunctionInterface(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def all_process_stages(self) -> List[str]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def run(self, ipts: List[FunctionIpt]) -> FunctionRunOpt:
         raise NotImplementedError
