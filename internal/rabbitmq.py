@@ -1,22 +1,28 @@
 import asyncio
-from typing import Callable
+from dataclasses import field
+from typing import Any, Callable
+from dataclasses import dataclass
 
 import pika
 
 ExchangeName = "bloc_topic_exchange"
 
-
+@dataclass
 class RabbitMQ:
-    def __init__(
-            self,
-            user: str, password: str,
-            host: str, port: int, v_host: str
-    ) -> None:
+    user: str
+    password: str
+    host: str
+    port: int
+    v_host: str
+    _channel: Any = field(init=False)
+
+    def __post_init__(self):
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(
-                host=host, port=port,
-                # virtual_host=v_host,
-                credentials=pika.PlainCredentials(user, password)
+                host=self.host, port=self.port,
+                # virtual_host=self.v_host,
+                credentials=pika.PlainCredentials(
+                    self.user, self.password)
             )
         )
 
@@ -25,6 +31,7 @@ class RabbitMQ:
         channel.exchange_declare(exchange=ExchangeName, exchange_type='topic', durable=True)
 
         self._channel = channel
+    
     
     async def consume_rabbit_exchange(
         self,

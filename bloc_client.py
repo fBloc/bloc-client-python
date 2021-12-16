@@ -1,7 +1,7 @@
 import os.path
 from typing import List, Optional
-from dataclasses import dataclass
 from collections import defaultdict
+from dataclasses import dataclass, field
 
 from internal.http_util import post_to_server
 from function import Function, FunctionGroup
@@ -71,10 +71,9 @@ class ConfigBuilder:
 
 @dataclass
 class BlocClient:
-    def __init__(self, name:str) -> None:
-        self.name = name
-        self.function_groups = []
-        self.configBuilder = ConfigBuilder()
+    name: str
+    function_groups: List[FunctionGroup] = field(default_factory=list)
+    configBuilder: ConfigBuilder = field(default=ConfigBuilder())
 
     def register_function_group(self, new_group_name: str) -> FunctionGroup:
         for i in self.function_groups:

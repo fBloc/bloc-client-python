@@ -1,6 +1,6 @@
 from os import name
-from dataclasses import dataclass
 from typing import List, Optional
+from dataclasses import field, dataclass
 
 from function_opt import FunctionOpt
 from function_ipt import FunctionIpts
@@ -18,10 +18,11 @@ class Function:
     id: Optional[str]=None
     exe_func=None
 
+
+@dataclass
 class FunctionGroup:
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.functions = []
+    name: str
+    functions: List[Function] = field(default_factory=list)
 
     def add_function(
         self, 
