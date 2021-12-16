@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional, Any, Tuple
 
 import httpx
@@ -9,7 +10,13 @@ transport = httpx.AsyncHTTPTransport(
 )
 client = httpx.AsyncClient(timeout=20, transport=transport)
 
+def _complete_url(url: str) -> str:
+    if not url.startswith("http"):
+        url = "http://" + url
+    return url
 
+
+@dataclass
 class ServerResp:
     status_code: int
     status_msg: str
@@ -21,7 +28,7 @@ async def get_to_server(
         headers: Optional[dict[str, str]]=None,
 ) -> Tuple[Any, Optional[Exception]]:
     try:
-        resp = client.get(url, params=params, headers=headers)
+        resp = client.get(_complete_url(url), params=params, headers=headers)
         if resp.status_code != SucCode:
             return None, Exception(f"failed with status_code {resp.status_code}")
         resp = ServerResp(**resp.json())
@@ -37,7 +44,7 @@ async def post_to_server(
         headers: Optional[dict[str, str]]=None,
 ) -> Tuple[Any, Optional[Exception]]:
     try:
-        resp = await client.post(url, json=data, headers=headers)
+        resp = await client.post(_complete_url(url), json=data, headers=headers)
         if resp.status_code != SucCode:
             return None, Exception(f"failed with status_code {resp.status_code}")
         resp = ServerResp(**resp.json())

@@ -1,6 +1,5 @@
 import os.path
 from typing import List, Optional
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 from internal.http_util import post_to_server
@@ -84,8 +83,7 @@ class BlocClient:
         return func_group
 
     def gen_req_server_path(self, *sub_paths: str) -> str:
-        return os.path.join(
-            self.configBuilder.server_conf.socket_address,
+        return self.configBuilder.server_conf.socket_address + os.path.join(
             ServerBasicPathPrefix,
             *sub_paths)
     
@@ -97,26 +95,37 @@ class BlocClient:
     # 1. register local functions to server
     # 2. get server's resp of each function's id. it's needed in consumer to find func by id
     async def register_functions_to_server(self):
-        groupname_map_funcname_map_func_req = defaultdict(lambda: defaultdict(lambda: []))
+        groupName_map_functions = {}
         req = {
             "who": self.name,
-            "groupName_map_functionName_map_function": groupname_map_funcname_map_func_req}
+            "groupName_map_functions": groupName_map_functions}
         
         for i in self.function_groups:
             group_name = i.name
+            groupName_map_functions[group_name] = []
             for j in i.functions:
-                groupname_map_funcname_map_func_req[group_name][j.name].append(
+                groupName_map_functions[group_name].append(
                     Function(
                         name=j.name, 
                         group_name=j.name,
                         description=j.description, 
                         ipts=j.ipts,
                         opts=j.opts,
-                        process_stages=j.process_stages))
-        groupname_map_funcname_map_func_resp, err = await post_to_server(
+                        process_stages=j.process_stages).json_dict())
+        i = self.gen_req_server_path(RegisterFuncPath)
+        resp, err = await post_to_server(
             self.gen_req_server_path(RegisterFuncPath), req)
         if err:
             raise Exception(f"register to server failed: {err}")
+        groupName_map_functions = resp['groupName_map_functions']
+
+        groupname_map_funcname_map_func_resp = {}
+        for group_name, functions in groupName_map_functions.items():
+            groupname_map_funcname_map_func_resp[group_name] = {}
+            for func_dict in functions:
+                if func_dict['name'] not in groupname_map_funcname_map_func_resp[group_name]:
+                    groupname_map_funcname_map_func_resp[group_name][func_dict['name']] = {}
+                groupname_map_funcname_map_func_resp[group_name][func_dict['name']] = func_dict
 
         # server response each func's id, need complete to local functions
         for i in self.function_groups:
@@ -125,13 +134,11 @@ class BlocClient:
                 server_resp_func = groupname_map_funcname_map_func_resp.get(group_name, {}).get(j.name)
                 if not server_resp_func:
                     raise Exception(f'server resp none of function: {group_name}-{j.name}')
-                assert isinstance(server_resp_func, Function), ""
-                j.id = server_resp_func.id
+                j.id = server_resp_func['id']
 
     @staticmethod
     async def _run_function(function_id: str):
         print(f"received function to run: {function_id}")
-        pass
 
     async def _run_consumer(self):
         await self.configBuilder.rabbit.consume_rabbit_exchange(

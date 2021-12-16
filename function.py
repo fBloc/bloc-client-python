@@ -1,22 +1,33 @@
+import json
 from os import name
 from typing import List, Optional
 from dataclasses import field, dataclass
 
 from function_opt import FunctionOpt
-from function_ipt import FunctionIpts
+from function_ipt import FunctionIpt
 from function_interface import FunctionInterface
 
 
 @dataclass
 class Function:
+    id: str = field(init=False)
     name: str
     group_name: str
     description: str
-    ipts: FunctionIpts
+    ipts: List[FunctionIpt]
     opts: List[FunctionOpt]
     process_stages: List[str]
-    id: Optional[str]=None
     exe_func=None
+
+    def json_dict(self):
+        return {
+            'name': self.name,
+            'group_name': self.group_name,
+            'description': self.description,
+            'ipts': [i.json_dict() for i in self.ipts],
+            'opts': [i.json_dict() for i in self.opts],
+            'process_stages': self.process_stages
+        }
 
 
 @dataclass

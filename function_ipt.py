@@ -1,9 +1,10 @@
+from dataclasses import dataclass, field
 from typing import List, Any, Optional
-from dataclasses import dataclass
 
 from value_type import ValueType
 from select_options import SelectOption
 from formcontrol_type import FormControlType
+
 
 @dataclass
 class IptComponent:
@@ -12,8 +13,18 @@ class IptComponent:
     hint: str
     default_value: Any
     allow_multi: bool
-    select_options: Optional[List[SelectOption]]=None
+    select_options: List[SelectOption]=field(default_factory=list)
     value: Optional[Any]=None
+
+    def json_dict(self):
+        return {
+            "value_type": self.value_type.value,
+            "formcontrol_type": self.formcontrol_type.value,
+            "hint": self.hint,
+            "default_value": self.default_value,
+            "allow_multi": self.allow_multi,
+            "select_options": [i.json_dict() for i in self.select_options]
+        }
 
 @dataclass
 class FunctionIpt:
@@ -21,5 +32,11 @@ class FunctionIpt:
     display: str
     must: bool
     components: List[IptComponent]
-    
-FunctionIpts = List[FunctionIpt]
+
+    def json_dict(self):
+        return {
+            "key": self.key,
+            "display": self.display,
+            "must": self.must,
+            "components": [i.json_dict() for i in self.components]
+        }
