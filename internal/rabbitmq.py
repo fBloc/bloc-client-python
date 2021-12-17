@@ -51,6 +51,6 @@ class RabbitMQ:
                 exclusive=False,
             ):
                 if not body:
-                    await asyncio.sleep()
+                    await asyncio.sleep(0.01)
                     continue
-                await callback_func(body.decode(), method_frame.delivery_tag)
+                await callback_func(body.decode())

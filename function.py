@@ -17,7 +17,7 @@ class Function:
     ipts: List[FunctionIpt]
     opts: List[FunctionOpt]
     process_stages: List[str]
-    exe_func=None
+    exe_func: FunctionInterface=field(default=None)
 
     def json_dict(self):
         return {
@@ -42,9 +42,14 @@ class FunctionGroup:
     ):
         for i in self.functions:
             assert i.name == name, "not allowed same function name under same group"
-        self.functions.append(Function(
-            name=name, group_name=self.name,
-            description=description, 
-            ipts=func.ipt_config(),
-            opts=func.opt_config(),
-            process_stages=func.all_process_stages()))
+        self.functions.append(
+            Function(
+                name=name, 
+                group_name=self.name,
+                description=description, 
+                ipts=func.ipt_config(),
+                opts=func.opt_config(),
+                process_stages=func.all_process_stages(),
+                exe_func=func
+            )
+        )

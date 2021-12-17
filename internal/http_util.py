@@ -28,7 +28,10 @@ async def get_to_server(
         headers: Optional[dict[str, str]]=None,
 ) -> Tuple[Any, Optional[Exception]]:
     try:
-        resp = client.get(_complete_url(url), params=params, headers=headers)
+        resp = await client.get(
+            _complete_url(url), 
+            params=params, 
+            headers=headers)
         if resp.status_code != SucCode:
             return None, Exception(f"failed with status_code {resp.status_code}")
         resp = ServerResp(**resp.json())
@@ -47,9 +50,9 @@ async def post_to_server(
         resp = await client.post(_complete_url(url), json=data, headers=headers)
         if resp.status_code != SucCode:
             return None, Exception(f"failed with status_code {resp.status_code}")
+        if not resp.content:
+            return None, None
         resp = ServerResp(**resp.json())
     except Exception as e:
         return None, e
-    if resp.status_code != SucCode:
-        return None, Exception(resp.status_msg)
     return resp.data, None

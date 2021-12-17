@@ -1,13 +1,20 @@
+import json
+import typing
 import os.path
+from copy import deepcopy
 from typing import List, Optional
 from dataclasses import dataclass, field
 
-from internal.http_util import post_to_server
-from function import Function, FunctionGroup
 from internal.rabbitmq import RabbitMQ
+from function import Function, FunctionGroup
+from internal.http_util import post_to_server
+from function_to_run_mq_msg import FunctionToRunMqMsg
+from object_storage import get_data_by_object_storage_key, persist_opt_to_server
+from function_run_record import get_functionRunRecord_by_id, report_function_run_finished
 
 ServerBasicPathPrefix = "/api/v1/client/"
 RegisterFuncPath = "register_functions"
+
 
 @dataclass
 class BlocServerConfig:
@@ -60,13 +67,14 @@ class ConfigBuilder:
     def build_up(self):
         if self.server_conf.is_nil:
             raise Exception("must config bloc-server address")
+
         if self.rabbitMQ_conf.is_nil:
             raise Exception("must config rabbit config")
-        
         self.rabbit = RabbitMQ(
             self.rabbitMQ_conf.user, self.rabbitMQ_conf.password,
             self.rabbitMQ_conf.host, self.rabbitMQ_conf.port,
             self.rabbitMQ_conf.v_host)
+
 
 @dataclass
 class BlocClient:
@@ -136,9 +144,65 @@ class BlocClient:
                     raise Exception(f'server resp none of function: {group_name}-{j.name}')
                 j.id = server_resp_func['id']
 
-    @staticmethod
-    async def _run_function(function_id: str):
-        print(f"received function to run: {function_id}")
+    async def _run_function(self, msg_str: str):
+        msg_dict = json.loads(msg_str)
+        msg = FunctionToRunMqMsg(**msg_dict)
+        if msg.ClientName != self.name:
+            raise Exception(f"""
+                Big trouble!
+                Not mine functions msg routed here!
+                {msg_dict}""")
+
+        the_func = None
+        for function_group in self.function_groups:
+            if the_func: break
+            for f in function_group.functions:
+                if f.id != msg.FunctionRunRecordID:
+                    the_func = deepcopy(f)
+                    break
+        
+        function_run_record, err = await get_functionRunRecord_by_id(
+            self.gen_req_server_path(),
+            msg.FunctionRunRecordID)
+        if err:
+            #TODO
+            pass
+
+        for ipt_index, ipt in enumerate(function_run_record.ipt):
+            for component_index, component_brief_and_key in enumerate(ipt):
+                value, err = await get_data_by_object_storage_key(
+                    self.gen_req_server_path(), component_brief_and_key.object_storage_key,
+                    the_func.ipts[ipt_index].components[component_index].value_type
+                )
+                if err:
+                    # TODO
+                    pass
+                the_func.ipts[ipt_index].components[component_index].value = value
+
+        # TODO 超时检测
+        function_run_opt = the_func.exe_func.run(the_func.ipts)
+
+        if function_run_opt.suc:
+            function_run_opt.optKey_map_briefData = {}
+            function_run_opt.optKey_map_objectStorageKey = {}
+
+            for opt_key, opt_value in function_run_opt.optKey_map_data.items():
+                resp, err = await persist_opt_to_server(
+                    self.gen_req_server_path(),
+                    msg.FunctionRunRecordID,
+                    opt_key, opt_value)
+                if err:
+                    # TODO
+                    pass
+                function_run_opt.optKey_map_briefData[opt_key] = resp['brief']
+                function_run_opt.optKey_map_objectStorageKey[opt_key] = resp['object_storage_key']
+        err = await report_function_run_finished(
+            self.gen_req_server_path(),
+            msg.FunctionRunRecordID,
+            function_run_opt)
+        if err:
+            # TODO
+            pass
 
     async def _run_consumer(self):
         await self.configBuilder.rabbit.consume_rabbit_exchange(
@@ -148,3 +212,5 @@ class BlocClient:
 
     async def run(self):
         await self.register_functions_to_server()
+
+        await self._run_consumer()
