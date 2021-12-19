@@ -4,19 +4,20 @@ from os import path
 from typing import Any, Tuple
 
 from value_type import ValueType
-from internal.http_util import get_to_server, post_to_server
+from internal.http_util import syn_get_to_server, sync_post_to_server
 
 
 ObjectStorageDataByKeyFromServerPath = "get_byte_value_by_key"
 PersistOptDataToServerPath = "persist_certain_function_run_opt_field"
 
-async def get_data_by_object_storage_key(
+def get_data_by_object_storage_key(
     server_url: str, object_storage_key: str, 
     value_type: ValueType
 ) -> Tuple[Any, Exception]:
-    resp, err = await get_to_server(
+    resp, err = syn_get_to_server(
         server_url + path.join(
-            ObjectStorageDataByKeyFromServerPath, object_storage_key),
+            ObjectStorageDataByKeyFromServerPath, 
+            object_storage_key),
         {})
     if err:
         return None, err
@@ -39,7 +40,7 @@ async def get_data_by_object_storage_key(
     except Exception as e:
         return None, e
 
-async def persist_opt_to_server(
+def persist_opt_to_server(
     server_url: str, 
     function_run_record_id: str, 
     opt_key: str, opt_data: Any
@@ -48,7 +49,7 @@ async def persist_opt_to_server(
         'function_run_record_id': function_run_record_id,
         'opt_key': opt_key,
         'data': opt_data}
-    resp, err = await post_to_server(
+    resp, err = sync_post_to_server(
         server_url + path.join(PersistOptDataToServerPath),
         data)
     if err:

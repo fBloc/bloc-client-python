@@ -1,11 +1,10 @@
-import asyncio
-from dataclasses import field
-from typing import Any, Callable
-from dataclasses import dataclass
+from typing import Any
+from dataclasses import dataclass, field
 
 import pika
 
 ExchangeName = "bloc_topic_exchange"
+
 
 @dataclass
 class RabbitMQ:
@@ -14,7 +13,7 @@ class RabbitMQ:
     host: str
     port: int
     v_host: str
-    _channel: Any = field(init=False)
+    channel: Any = field(init=False)
 
     def __post_init__(self):
         connection = pika.BlockingConnection(
@@ -30,27 +29,13 @@ class RabbitMQ:
         channel.basic_qos(prefetch_count=1)
         channel.exchange_declare(exchange=ExchangeName, exchange_type='topic', durable=True)
 
-        self._channel = channel
+        self.channel = channel
     
-    
-    async def consume_rabbit_exchange(
-        self,
+    def consume_prepare(
+        self, 
         queue_name: str,
         routing_key: str,
-        callback_func: Callable,
     ):
-        self._channel.exchange_declare(exchange=ExchangeName, exchange_type='topic', durable=True)
-        self._channel.queue_declare(queue_name, durable=True, exclusive=False, auto_delete=False)
-        self._channel.queue_bind(exchange=ExchangeName, queue=queue_name, routing_key=routing_key)
-
-        while True:
-            for method_frame, properties, body in self._channel.consume(
-                queue=queue_name,
-                inactivity_timeout=1.1,
-                auto_ack=True,
-                exclusive=False,
-            ):
-                if not body:
-                    await asyncio.sleep(0.01)
-                    continue
-                await callback_func(body.decode())
+        self.channel.exchange_declare(exchange=ExchangeName, exchange_type='topic', durable=True)
+        self.channel.queue_declare(queue_name, durable=True, exclusive=False, auto_delete=False)
+        self.channel.queue_bind(exchange=ExchangeName, queue=queue_name, routing_key=routing_key)

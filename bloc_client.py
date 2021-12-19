@@ -1,14 +1,17 @@
 import json
-import typing
 import os.path
+import asyncio
 from copy import deepcopy
-from typing import List, Optional
+from functools import partial
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+from concurrent.futures import ProcessPoolExecutor
+
 
 from internal.rabbitmq import RabbitMQ
 from function import Function, FunctionGroup
-from internal.http_util import post_to_server
 from function_to_run_mq_msg import FunctionToRunMqMsg
+from internal.http_util import post_to_server, sync_post_to_server
 from object_storage import get_data_by_object_storage_key, persist_opt_to_server
 from function_run_record import get_functionRunRecord_by_id, report_function_run_finished
 
@@ -98,11 +101,24 @@ class BlocClient:
     def get_config_builder(self) -> ConfigBuilder:
         self.configBuilder = ConfigBuilder()
         return self.configBuilder
-
-    # this func have two responsibilities:
-    # 1. register local functions to server
-    # 2. get server's resp of each function's id. it's needed in consumer to find func by id
-    async def register_functions_to_server(self):
+    
+    @staticmethod
+    async def keep_register_to_server(
+        executor, loop,
+        url: str, req: Dict[str, Any]
+    ):
+        while True:
+            resp, err = await loop.run_in_executor(
+                executor, sync_post_to_server,
+                url, req
+            )
+            if err:
+                # TODO
+                pass
+            await asyncio.sleep(10)
+    
+    @property
+    def register_to_server_dict(self):
         groupName_map_functions = {}
         req = {
             "who": self.name,
@@ -120,9 +136,19 @@ class BlocClient:
                         ipts=j.ipts,
                         opts=j.opts,
                         process_stages=j.process_stages).json_dict())
-        i = self.gen_req_server_path(RegisterFuncPath)
+        return req
+
+    @property
+    def register_to_server_url(self) -> str:
+        return self.gen_req_server_path(RegisterFuncPath)
+
+    # this func have two responsibilities:
+    # 1. register local functions to server
+    # 2. get server's resp of each function's id. it's needed in consumer to find func by id
+    async def register_functions_to_server(self):
         resp, err = await post_to_server(
-            self.gen_req_server_path(RegisterFuncPath), req)
+            self.register_to_server_url,
+            self.register_to_server_dict)
         if err:
             raise Exception(f"register to server failed: {err}")
         groupName_map_functions = resp['groupName_map_functions']
@@ -144,25 +170,31 @@ class BlocClient:
                     raise Exception(f'server resp none of function: {group_name}-{j.name}')
                 j.id = server_resp_func['id']
 
-    async def _run_function(self, msg_str: str):
+    @staticmethod
+    def _run_function(
+        msg_str: str,
+        client_name: str,
+        server_url: str,
+        function_groups: List[FunctionGroup],
+    ):
         msg_dict = json.loads(msg_str)
         msg = FunctionToRunMqMsg(**msg_dict)
-        if msg.ClientName != self.name:
+        if msg.ClientName != client_name:
             raise Exception(f"""
                 Big trouble!
                 Not mine functions msg routed here!
                 {msg_dict}""")
 
         the_func = None
-        for function_group in self.function_groups:
+        for function_group in function_groups:
             if the_func: break
             for f in function_group.functions:
                 if f.id != msg.FunctionRunRecordID:
                     the_func = deepcopy(f)
                     break
         
-        function_run_record, err = await get_functionRunRecord_by_id(
-            self.gen_req_server_path(),
+        function_run_record, err = get_functionRunRecord_by_id(
+            server_url,
             msg.FunctionRunRecordID)
         if err:
             #TODO
@@ -170,8 +202,8 @@ class BlocClient:
 
         for ipt_index, ipt in enumerate(function_run_record.ipt):
             for component_index, component_brief_and_key in enumerate(ipt):
-                value, err = await get_data_by_object_storage_key(
-                    self.gen_req_server_path(), component_brief_and_key.object_storage_key,
+                value, err = get_data_by_object_storage_key(
+                    server_url, component_brief_and_key.object_storage_key,
                     the_func.ipts[ipt_index].components[component_index].value_type
                 )
                 if err:
@@ -187,8 +219,8 @@ class BlocClient:
             function_run_opt.optKey_map_objectStorageKey = {}
 
             for opt_key, opt_value in function_run_opt.optKey_map_data.items():
-                resp, err = await persist_opt_to_server(
-                    self.gen_req_server_path(),
+                resp, err = persist_opt_to_server(
+                    server_url,
                     msg.FunctionRunRecordID,
                     opt_key, opt_value)
                 if err:
@@ -196,21 +228,63 @@ class BlocClient:
                     pass
                 function_run_opt.optKey_map_briefData[opt_key] = resp['brief']
                 function_run_opt.optKey_map_objectStorageKey[opt_key] = resp['object_storage_key']
-        err = await report_function_run_finished(
-            self.gen_req_server_path(),
+        err = report_function_run_finished(
+            server_url,
             msg.FunctionRunRecordID,
             function_run_opt)
         if err:
             # TODO
             pass
+    
+    @classmethod
+    async def _run_consumer(
+        cls,
+        executor, 
+        loop,
+        rabbit: RabbitMQ, 
+        name: str,
+        client_name: str,
+        server_url: str,
+        function_groups: List[FunctionGroup],
+    ):
+        run_func = partial(
+            cls._run_function,
+            client_name=client_name,
+            server_url=server_url,
+            function_groups=function_groups,
+        )
+        rabbit.consume_prepare(name, name)
 
-    async def _run_consumer(self):
-        await self.configBuilder.rabbit.consume_rabbit_exchange(
-            queue_name="function_client_run_consumer." + self.name,
-            routing_key="function_client_run_consumer." + self.name,
-            callback_func=self._run_function)
+        channel = rabbit.channel
+        while True:
+            method_frame, _, body = channel.basic_get(
+                name,
+                auto_ack=True,
+            )
+            if method_frame:
+                await loop.run_in_executor(
+                    executor, run_func, body.decode())
+            else:
+                await asyncio.sleep(0)
 
     async def run(self):
         await self.register_functions_to_server()
 
-        await self._run_consumer()
+        loop = asyncio.get_event_loop()
+        with ProcessPoolExecutor(max_workers=2) as executor:
+            await asyncio.gather(
+                self.keep_register_to_server(
+                    executor, loop,
+                    self.register_to_server_url,
+                    self.register_to_server_dict,
+                ),
+                self._run_consumer(
+                    executor,
+                    loop,
+                    self.configBuilder.rabbit,
+                    "function_client_run_consumer." + self.name,
+                    self.name, 
+                    self.gen_req_server_path(), 
+                    self.function_groups
+                )
+            )

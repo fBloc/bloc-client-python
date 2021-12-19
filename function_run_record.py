@@ -3,9 +3,8 @@ from datetime import datetime
 from typing import Optional, List, Tuple
 from dataclasses import dataclass, field
 
-from function_opt import FunctionOpt
 from function_run_opt import FunctionRunOpt
-from internal.http_util import get_to_server, post_to_server
+from internal.http_util import syn_get_to_server, sync_post_to_server
 
 FunctionRunRecordPath = "get_function_run_record_by_id"
 FunctionRunFinishedPath = "function_run_finished"
@@ -27,11 +26,11 @@ class FunctionRunRecord:
     ipt: List[List[BriefAndKey]] = field(default_factory=list)
     should_be_canceled_at: Optional[datetime]=None
 
-async def get_functionRunRecord_by_id(
+def get_functionRunRecord_by_id(
     server_url: str,
     func_run_record_id: str
 ) -> Tuple[FunctionRunRecord, Exception]:
-    resp, err = await get_to_server(
+    resp, err = syn_get_to_server(
         server_url + path.join(FunctionRunRecordPath, func_run_record_id),
         {})
     if err:
@@ -63,15 +62,14 @@ async def get_functionRunRecord_by_id(
     except Exception as e:
         return None, e
 
-
-async def report_function_run_finished(
+def report_function_run_finished(
     server_url: str,
     function_run_record_id: str, 
     function_run_opt: FunctionRunOpt,
 ) -> Exception:
     data = function_run_opt.finished_report_dict
     data['function_run_record_id'] = function_run_record_id
-    resp, err = await post_to_server(
+    resp, err = sync_post_to_server(
         server_url + path.join(FunctionRunFinishedPath),
         data)
     return err
