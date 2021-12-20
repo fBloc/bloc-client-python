@@ -4,6 +4,7 @@ from typing import List
 from function_opt import FunctionOpt
 from function_ipt import FunctionIpt
 from function_run_opt import FunctionRunOpt
+from function_run_queue import FunctionRunMsgQueue
 
 
 class FunctionInterface(metaclass=abc.ABCMeta):
@@ -33,5 +34,9 @@ class FunctionInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def run(self, ipts: List[FunctionIpt]) -> FunctionRunOpt:
+    def run(
+        self,
+        ipts: List[FunctionIpt],
+        queue: FunctionRunMsgQueue
+    ) -> FunctionRunOpt:
         raise NotImplementedError

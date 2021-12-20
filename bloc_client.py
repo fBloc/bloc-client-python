@@ -3,17 +3,25 @@ import os.path
 import asyncio
 from copy import deepcopy
 from functools import partial
+from multiprocessing import Process
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from concurrent.futures import ProcessPoolExecutor
 
 
 from internal.rabbitmq import RabbitMQ
+from function_run_opt import FunctionRunOpt
 from function import Function, FunctionGroup
+from function_run_queue import FunctionRunMsgQueue
+from function_run_log import Logger, FunctionRunMsg
 from function_to_run_mq_msg import FunctionToRunMqMsg
 from internal.http_util import post_to_server, sync_post_to_server
 from object_storage import get_data_by_object_storage_key, persist_opt_to_server
 from function_run_record import get_functionRunRecord_by_id, report_function_run_finished
+from function_run_process_report import (
+    HighReadableFunctionRunProgress, 
+    report_function_run_high_readable_progress
+)
 
 ServerBasicPathPrefix = "/api/v1/client/"
 RegisterFuncPath = "register_functions"
@@ -170,8 +178,64 @@ class BlocClient:
                     raise Exception(f'server resp none of function: {group_name}-{j.name}')
                 j.id = server_resp_func['id']
 
-    @staticmethod
+    @classmethod
+    def create_function_run_logger(cls, server_url:str, function_run_record_id: str) -> Logger:
+        return Logger.New(
+            server_url,
+            "func-run-record-"+function_run_record_id
+        )
+
+    @classmethod
+    def _read(
+        cls,
+        server_url: str,
+        function_run_record_id: str,
+        logger: Logger,
+        q: FunctionRunMsgQueue,
+    ):
+        print('Process(%s) is reading...')
+        logger = cls.create_function_run_logger(
+            server_url, function_run_record_id)
+        while True:
+            msg = q.get()
+            err = None
+            if isinstance(msg, FunctionRunMsg):
+                logger.add_msg(msg)
+            elif isinstance(msg, FunctionRunOpt):
+                function_run_opt = msg
+                if function_run_opt.suc:
+                    function_run_opt.optKey_map_briefData = {}
+                    function_run_opt.optKey_map_objectStorageKey = {}
+
+                    for opt_key, opt_value in function_run_opt.optKey_map_data.items():
+                        resp, err = persist_opt_to_server(
+                            server_url,
+                            function_run_record_id,
+                            opt_key, opt_value)
+                        if err:
+                            # TODO
+                            pass
+                        function_run_opt.optKey_map_briefData[opt_key] = resp['brief']
+                        function_run_opt.optKey_map_objectStorageKey[opt_key] = resp['object_storage_key']
+                err = report_function_run_finished(
+                    server_url,
+                    function_run_record_id,
+                    function_run_opt)
+                if err:
+                    # TODO
+                    pass
+            elif isinstance(msg, HighReadableFunctionRunProgress):
+                func_run_progress = msg
+                err = report_function_run_high_readable_progress(
+                    server_url, 
+                    function_run_record_id,
+                    func_run_progress
+                )
+                logger.force_upload()
+
+    @classmethod
     def _run_function(
+        cls,
         msg_str: str,
         client_name: str,
         server_url: str,
@@ -184,6 +248,9 @@ class BlocClient:
                 Big trouble!
                 Not mine functions msg routed here!
                 {msg_dict}""")
+        
+        logger = cls.create_function_run_logger(
+            server_url, msg.FunctionRunRecordID)
 
         the_func = None
         for function_group in function_groups:
@@ -197,6 +264,7 @@ class BlocClient:
             server_url,
             msg.FunctionRunRecordID)
         if err:
+            logger.error(f"get_functionRunRecord_by_id from server error: {err}")
             #TODO
             pass
 
@@ -207,34 +275,34 @@ class BlocClient:
                     the_func.ipts[ipt_index].components[component_index].value_type
                 )
                 if err:
+                    logger.error(f"""
+                        get_data_by_object_storage_key from server error: {err}.
+                        ipt_index: {ipt_index}, component_index: {component_index},
+                        key:{component_brief_and_key.object_storage_key}""")
                     # TODO
                     pass
                 the_func.ipts[ipt_index].components[component_index].value = value
 
+        q = FunctionRunMsgQueue.New()
         # TODO 超时检测
-        function_run_opt = the_func.exe_func.run(the_func.ipts)
+        runner = Process(
+            target=the_func.exe_func.run, args=(
+                the_func.ipts, q,
+            )
+        )
+        reader = Process(
+            target=cls._read, args=(
+                server_url,
+                msg.FunctionRunRecordID,
+                logger,
+                q, 
+            )
+        )
 
-        if function_run_opt.suc:
-            function_run_opt.optKey_map_briefData = {}
-            function_run_opt.optKey_map_objectStorageKey = {}
-
-            for opt_key, opt_value in function_run_opt.optKey_map_data.items():
-                resp, err = persist_opt_to_server(
-                    server_url,
-                    msg.FunctionRunRecordID,
-                    opt_key, opt_value)
-                if err:
-                    # TODO
-                    pass
-                function_run_opt.optKey_map_briefData[opt_key] = resp['brief']
-                function_run_opt.optKey_map_objectStorageKey[opt_key] = resp['object_storage_key']
-        err = report_function_run_finished(
-            server_url,
-            msg.FunctionRunRecordID,
-            function_run_opt)
-        if err:
-            # TODO
-            pass
+        runner.start()
+        reader.start()
+        runner.join()
+        reader.terminate()
     
     @classmethod
     async def _run_consumer(
