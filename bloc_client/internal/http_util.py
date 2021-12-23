@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Any, Tuple
+from typing import Dict, Optional, Any, Tuple
 
 import httpx
 
@@ -29,7 +29,7 @@ class ServerResp:
 async def get_to_server(
         url: str,
         params: dict,
-        headers: Optional[dict[str, str]]=None,
+        headers: Optional[Dict[str, str]]=None,
 ) -> Tuple[Any, Optional[Exception]]:
     try:
         resp = await client.get(
@@ -48,7 +48,7 @@ async def get_to_server(
 def syn_get_to_server(
         url: str,
         params: dict,
-        headers: Optional[dict[str, str]]=None,
+        headers: Optional[Dict[str, str]]=None,
 ) -> Tuple[Any, Optional[Exception]]:
     try:
         resp = sync_client.get(
@@ -67,7 +67,7 @@ def syn_get_to_server(
 async def post_to_server(
         url: str,
         data: dict,
-        headers: Optional[dict[str, str]]=None,
+        headers: Optional[Dict[str, str]]=None,
 ) -> Tuple[Any, Optional[Exception]]:
     try:
         resp = await client.post(_complete_url(url), json=data, headers=headers)
@@ -83,7 +83,7 @@ async def post_to_server(
 def sync_post_to_server(
         url: str,
         data: dict,
-        headers: Optional[dict[str, str]]=None,
+        headers: Optional[Dict[str, str]]=None,
 ) -> Tuple[Any, Optional[Exception]]:
     try:
         resp = sync_client.post(

@@ -1,10 +1,10 @@
 from typing import Any, Optional
 from multiprocessing import Queue
 
-from function_run_log import LogLevel
-from function_run_opt import FunctionRunOpt
-from function_run_log import FunctionRunMsg
-from function_run_process_report import HighReadableFunctionRunProgress
+from bloc_client.function_run_log import LogLevel
+from bloc_client.function_run_opt import FunctionRunOpt
+from bloc_client.function_run_log import FunctionRunMsg
+from bloc_client.function_run_process_report import HighReadableFunctionRunProgress
 
 
 class FunctionRunMsgQueue:

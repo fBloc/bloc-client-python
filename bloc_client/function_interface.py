@@ -1,10 +1,10 @@
 import abc
 from typing import List
 
-from function_opt import FunctionOpt
-from function_ipt import FunctionIpt
-from function_run_opt import FunctionRunOpt
-from function_run_queue import FunctionRunMsgQueue
+from bloc_client.function_opt import FunctionOpt
+from bloc_client.function_ipt import FunctionIpt
+from bloc_client.function_run_opt import FunctionRunOpt
+from bloc_client.function_run_queue import FunctionRunMsgQueue
 
 
 class FunctionInterface(metaclass=abc.ABCMeta):

@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Any, Optional
 
-from value_type import ValueType
-from select_options import SelectOption
-from formcontrol_type import FormControlType
+from bloc_client.value_type import ValueType
+from bloc_client.select_options import SelectOption
+from bloc_client.formcontrol_type import FormControlType
 
 
 @dataclass

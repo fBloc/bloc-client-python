@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional
 from dataclasses import dataclass, field
 
-from internal.http_util import sync_post_to_server
+from bloc_client.internal.http_util import sync_post_to_server
 
 LogReportPath = "report_log"
 

@@ -9,16 +9,16 @@ from typing import Any, Dict, List, Optional
 from concurrent.futures import ProcessPoolExecutor
 
 
-from internal.rabbitmq import RabbitMQ
-from function_run_opt import FunctionRunOpt
-from function import Function, FunctionGroup
-from function_run_queue import FunctionRunMsgQueue
-from function_run_log import Logger, FunctionRunMsg
-from function_to_run_mq_msg import FunctionToRunMqMsg
-from internal.http_util import post_to_server, sync_post_to_server
-from object_storage import get_data_by_object_storage_key, persist_opt_to_server
-from function_run_record import get_functionRunRecord_by_id, report_function_run_finished
-from function_run_process_report import (
+from bloc_client.internal.rabbitmq import RabbitMQ
+from bloc_client.function_run_opt import FunctionRunOpt
+from bloc_client.function import Function, FunctionGroup
+from bloc_client.function_run_queue import FunctionRunMsgQueue
+from bloc_client.function_run_log import Logger, FunctionRunMsg
+from bloc_client.function_to_run_mq_msg import FunctionToRunMqMsg
+from bloc_client.internal.http_util import post_to_server, sync_post_to_server
+from bloc_client.object_storage import get_data_by_object_storage_key, persist_opt_to_server
+from bloc_client.function_run_record import get_functionRunRecord_by_id, report_function_run_finished
+from bloc_client.function_run_process_report import (
     HighReadableFunctionRunProgress, 
     report_function_run_high_readable_progress
 )

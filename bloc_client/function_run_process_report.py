@@ -2,7 +2,7 @@ from os import path
 from typing import Optional
 from dataclasses import dataclass
 
-from internal.http_util import sync_post_to_server
+from bloc_client.internal.http_util import sync_post_to_server
 
 FuncRunProgressReportPath = "report_progress"
 

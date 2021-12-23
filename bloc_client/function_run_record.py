@@ -3,8 +3,8 @@ from datetime import datetime
 from typing import Optional, List, Tuple
 from dataclasses import dataclass, field
 
-from function_run_opt import FunctionRunOpt
-from internal.http_util import syn_get_to_server, sync_post_to_server
+from bloc_client.function_run_opt import FunctionRunOpt
+from bloc_client.internal.http_util import syn_get_to_server, sync_post_to_server
 
 FunctionRunRecordPath = "get_function_run_record_by_id"
 FunctionRunFinishedPath = "function_run_finished"

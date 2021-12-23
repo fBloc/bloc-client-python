@@ -3,8 +3,8 @@ import base64
 from os import path
 from typing import Any, Tuple
 
-from value_type import ValueType
-from internal.http_util import syn_get_to_server, sync_post_to_server
+from bloc_client.value_type import ValueType
+from bloc_client.internal.http_util import syn_get_to_server, sync_post_to_server
 
 
 ObjectStorageDataByKeyFromServerPath = "get_byte_value_by_key"

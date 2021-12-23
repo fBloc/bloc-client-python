@@ -1,11 +1,9 @@
-import json
-from os import name
-from typing import List, Optional
+from typing import List
 from dataclasses import field, dataclass
 
-from function_opt import FunctionOpt
-from function_ipt import FunctionIpt
-from function_interface import FunctionInterface
+from bloc_client.function_opt import FunctionOpt
+from bloc_client.function_ipt import FunctionIpt
+from bloc_client.function_interface import FunctionInterface
 
 
 @dataclass

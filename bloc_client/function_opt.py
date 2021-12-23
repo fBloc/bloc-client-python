@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from value_type import ValueType
+from bloc_client.value_type import ValueType
 
 
 @dataclass
