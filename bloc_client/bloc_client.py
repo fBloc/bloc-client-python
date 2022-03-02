@@ -193,11 +193,6 @@ class BlocClient:
         logger: Logger,
         q: FunctionRunMsgQueue,
     ):
-        logger = cls.create_function_run_logger(
-            server_url, function_run_record_id)
-        logger.set_trace_id(trace_id)
-        logger.set_span_id(span_id)
-
         while True:
             msg = q.get()
             err = None
@@ -310,6 +305,7 @@ class BlocClient:
         runner.start()
         reader.start()
         runner.join()
+        reader.join()
         reader.terminate()
     
     @classmethod

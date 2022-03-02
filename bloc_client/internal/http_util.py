@@ -25,6 +25,7 @@ class ServerResp:
     status_code: int
     status_msg: str
     data: Any
+    trace_id: str
 
 async def get_to_server(
         url: str,
