@@ -23,6 +23,7 @@ class FunctionRunRecord:
     function_id: str
     flow_run_record_id: str
     canceled: str
+    trace_id: str=""
     ipt: List[List[BriefAndKey]] = field(default_factory=list)
     should_be_canceled_at: Optional[datetime]=None
 
@@ -44,6 +45,7 @@ def get_functionRunRecord_by_id(
             function_id=resp['function_id'],
             flow_run_record_id=resp['flow_function_id'],
             canceled=resp.get('canceled', False),
+            trace_id=resp['trace_id'],
             ipt=ipts
         )
         # TODO 处理should_be_canceled_at字段
@@ -63,6 +65,8 @@ def get_functionRunRecord_by_id(
         return None, e
 
 def report_function_run_finished(
+    trace_id: str, 
+    span_id: str,
     server_url: str,
     function_run_record_id: str, 
     function_run_opt: FunctionRunOpt,
@@ -71,5 +75,10 @@ def report_function_run_finished(
     data['function_run_record_id'] = function_run_record_id
     resp, err = sync_post_to_server(
         server_url + path.join(FunctionRunFinishedPath),
-        data)
+        data,
+        headers={
+            "trace_id": trace_id,
+            "span_id": span_id
+        }
+    )
     return err

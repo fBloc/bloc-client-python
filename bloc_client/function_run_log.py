@@ -1,8 +1,6 @@
 from os import path
 from enum import Enum
-from copy import deepcopy
 from datetime import datetime
-from typing import List, Optional
 from dataclasses import dataclass, field
 
 from bloc_client.internal.http_util import sync_post_to_server
@@ -27,76 +25,50 @@ class FunctionRunMsg:
 class LogMsg:
     level: LogLevel
     data: str
-    time: datetime=field(default_factory=datetime.now)
+    function_run_record_id: str
+    time: datetime=field(default_factory=datetime.utcnow)
 
     def json_dict(self):
         return {
             "level": self.level.value,
-            "date": self.data,
-            "time": self.time
+            "data": self.data,
+            "time": self.time.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "tag_map": {
+                "function_run_record_id": self.function_run_record_id
+            }
         }
 
 
 @dataclass
 class Logger:
     _server_url: str
-    name: str
-    _msgs: List[LogMsg]=field(default_factory=list)
-    _last_upload_time: Optional[datetime]=None
+    function_run_record_id: str
+    trace_id: str=""
+    span_id: str=""
 
     @staticmethod
-    def New(server_url:str, name:str) -> "Logger":
+    def New(server_url:str, function_run_record_id:str) -> "Logger":
         return Logger(
             _server_url=server_url,
-            name=name)
+            function_run_record_id=function_run_record_id)
     
-    def periodic_pub(self):
-        if self._last_upload_time == None:
-            self._last_upload_time = datetime.now()
-            return
-        not_reported_seconds = (datetime.now() - self._last_upload_time).total_seconds()
-        if not_reported_seconds >= 10:
-            # TODO need lock?
-            self._last_upload_time = datetime.now()
-            msgs = deepcopy(self._msgs)
-            self._msgs[:] = []
-            self.upload(msgs)
-
+    def set_trace_id(self, trace_id: str):
+        self.trace_id = trace_id
+    
+    def set_span_id(self, span_id: str):
+        self.span_id = span_id
+    
     def info(self, msg: str):
-        self._msgs.append(
-            LogMsg(
-                level=LogLevel.info,
-                data=msg
-            )
-        )
-        self.periodic_pub()
+        self.upload(LogLevel.info, msg)
 
     def warning(self, msg: str):
-        self._msgs.append(
-            LogMsg(
-                level=LogLevel.warning,
-                data=msg
-            )
-        )
-        self.periodic_pub()
+        self.upload(LogLevel.warning, msg)
     
     def error(self, msg: str):
-        self._msgs.append(
-            LogMsg(
-                level=LogLevel.error,
-                data=msg
-            )
-        )
-        self.periodic_pub()
+        self.upload(LogLevel.error, msg)
     
     def unknown(self, msg: str):
-        self._msgs.append(
-            LogMsg(
-                level=LogLevel.unknown,
-                data=msg
-            )
-        )
-        self.periodic_pub()
+        self.upload(LogLevel.unknown, msg)
     
     def add_msg(self, func_run_msg: FunctionRunMsg):
         if func_run_msg.level == LogLevel.info:
@@ -108,16 +80,17 @@ class Logger:
         else:
             self.unknown(func_run_msg.msg)
 
-    def upload(self, msgs:List[LogMsg]):
-        if not msgs: return
+    def upload(self, level: LogLevel, data: str):
+        msg = LogMsg(
+            level=level,
+            data=data,
+            function_run_record_id=self.function_run_record_id)
+
         _, err = sync_post_to_server(
             path.join(self._server_url, LogReportPath),
-            data={
-                "name": self.name,
-                "log_data": [i.json_dict() for i in msgs]
-            }
+            data={"log_data": [msg.json_dict()]},
+            headers={
+                "trace_id": self.trace_id,
+                "span_id": self.span_id}
         )
         return err
-
-    def force_upload(self):
-        self.upload(self._msgs)

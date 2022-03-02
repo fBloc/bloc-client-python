@@ -41,6 +41,8 @@ def get_data_by_object_storage_key(
         return None, e
 
 def persist_opt_to_server(
+    trace_id: str, 
+    span_id: str,
     server_url: str, 
     function_run_record_id: str, 
     opt_key: str, opt_data: Any
@@ -51,7 +53,12 @@ def persist_opt_to_server(
         'data': opt_data}
     resp, err = sync_post_to_server(
         server_url + path.join(PersistOptDataToServerPath),
-        data)
+        data, 
+        headers={
+            "trace_id": trace_id,
+            "span_id": span_id
+        }
+    )
     if err:
         return None, err
     try:

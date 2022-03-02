@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from concurrent.futures import ProcessPoolExecutor
 
 
+from bloc_client.internal.gen_uuid import new_uuid
 from bloc_client.internal.rabbitmq import RabbitMQ
 from bloc_client.function_run_opt import FunctionRunOpt
 from bloc_client.function import Function, FunctionGroup
@@ -180,22 +181,23 @@ class BlocClient:
 
     @classmethod
     def create_function_run_logger(cls, server_url:str, function_run_record_id: str) -> Logger:
-        return Logger.New(
-            server_url,
-            "func-run-record-"+function_run_record_id
-        )
+        return Logger.New(server_url, function_run_record_id)
 
     @classmethod
     def _read(
         cls,
+        trace_id: str,
+        span_id: str,
         server_url: str,
         function_run_record_id: str,
         logger: Logger,
         q: FunctionRunMsgQueue,
     ):
-        print('Process(%s) is reading...')
         logger = cls.create_function_run_logger(
             server_url, function_run_record_id)
+        logger.set_trace_id(trace_id)
+        logger.set_span_id(span_id)
+
         while True:
             msg = q.get()
             err = None
@@ -209,6 +211,7 @@ class BlocClient:
 
                     for opt_key, opt_value in function_run_opt.optKey_map_data.items():
                         resp, err = persist_opt_to_server(
+                            trace_id, span_id,
                             server_url,
                             function_run_record_id,
                             opt_key, opt_value)
@@ -218,20 +221,20 @@ class BlocClient:
                         function_run_opt.optKey_map_briefData[opt_key] = resp['brief']
                         function_run_opt.optKey_map_objectStorageKey[opt_key] = resp['object_storage_key']
                 err = report_function_run_finished(
+                    trace_id, span_id,
                     server_url,
                     function_run_record_id,
                     function_run_opt)
                 if err:
-                    # TODO
-                    pass
+                    logger.error("report function finished failed")
             elif isinstance(msg, HighReadableFunctionRunProgress):
                 func_run_progress = msg
                 err = report_function_run_high_readable_progress(
+                    trace_id, span_id,
                     server_url, 
                     function_run_record_id,
                     func_run_progress
                 )
-                logger.force_upload()
 
     @classmethod
     def _run_function(
@@ -261,12 +264,15 @@ class BlocClient:
                     break
         
         function_run_record, err = get_functionRunRecord_by_id(
-            server_url,
-            msg.FunctionRunRecordID)
+            server_url, msg.FunctionRunRecordID)
         if err:
             logger.error(f"get_functionRunRecord_by_id from server error: {err}")
             #TODO
             pass
+
+        logger.set_trace_id(function_run_record.trace_id)
+        span_id = new_uuid()
+        logger.set_span_id(span_id)
 
         for ipt_index, ipt in enumerate(function_run_record.ipt):
             for component_index, component_brief_and_key in enumerate(ipt):
@@ -292,6 +298,8 @@ class BlocClient:
         )
         reader = Process(
             target=cls._read, args=(
+                function_run_record.trace_id,
+                span_id,
                 server_url,
                 msg.FunctionRunRecordID,
                 logger,

@@ -27,6 +27,8 @@ class HighReadableFunctionRunProgress:
         return resp
 
 def report_function_run_high_readable_progress(
+    trace_id: str, 
+    span_id: str,
     server_url: str,
     function_run_record_id: str, 
     function_run_progress: HighReadableFunctionRunProgress,
@@ -40,5 +42,9 @@ def report_function_run_high_readable_progress(
     }
     resp, err = sync_post_to_server(
         server_url + path.join(FuncRunProgressReportPath),
-        data)
+        data, headers= {
+            "trace_id": trace_id,
+            "span_id": span_id
+        }
+    )
     return err
