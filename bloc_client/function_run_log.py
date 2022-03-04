@@ -88,7 +88,7 @@ class Logger:
 
         _, err = sync_post_to_server(
             path.join(self._server_url, LogReportPath),
-            data={"log_data": [msg.json_dict()]},
+            data={"logs": [msg.json_dict()]},
             headers={
                 "trace_id": self.trace_id,
                 "span_id": self.span_id}

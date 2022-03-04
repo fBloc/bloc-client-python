@@ -1,6 +1,7 @@
 import json
 import os.path
 import asyncio
+import logging
 from copy import deepcopy
 from functools import partial
 from multiprocessing import Process
@@ -13,6 +14,7 @@ from bloc_client.internal.gen_uuid import new_uuid
 from bloc_client.internal.rabbitmq import RabbitMQ
 from bloc_client.function_run_opt import FunctionRunOpt
 from bloc_client.function import Function, FunctionGroup
+from bloc_client.function_interface import FunctionInterface
 from bloc_client.function_run_queue import FunctionRunMsgQueue
 from bloc_client.function_run_log import Logger, FunctionRunMsg
 from bloc_client.function_to_run_mq_msg import FunctionToRunMqMsg
@@ -94,6 +96,10 @@ class BlocClient:
     function_groups: List[FunctionGroup] = field(default_factory=list)
     configBuilder: ConfigBuilder = field(default=ConfigBuilder())
 
+    @staticmethod
+    def new_client(client_name: str) -> "BlocClient":
+        return BlocClient(name=client_name)
+
     def register_function_group(self, new_group_name: str) -> FunctionGroup:
         for i in self.function_groups:
             assert i.name == new_group_name, f"already exist group_name {i.name}, not allow register anymore"
@@ -111,6 +117,44 @@ class BlocClient:
         self.configBuilder = ConfigBuilder()
         return self.configBuilder
     
+    def test_run_function(
+        self, 
+        user_func: FunctionInterface,
+        params: List[List[Any]]
+    ):
+        ipts = user_func.ipt_config()
+        for ipt_index, ipt in enumerate(ipts):
+            must = ipts[ipt_index].must
+            if must:
+                if len(params) - 1 < ipt_index:
+                    raise Exception(
+                        f"index {ipt_index} is a cannot be nil ipt, but params has no this data")
+                if len(params[ipt_index]) < len(ipts[ipt_index].components):
+                    raise Exception(
+                        f"index {ipt_index} need {len(ipts[ipt_index].components)} component value, "
+                        f"but param only provide {len(params[ipt_index])} value"
+                    )
+
+            if ipt_index >= len(params): break
+            for component_index, _ in enumerate(ipt.components):
+                ipts[ipt_index].components[component_index].value = params[ipt_index][component_index]
+        
+        q = FunctionRunMsgQueue.New()
+
+        runner = Process(
+            target=user_func.run, 
+            args=(ipts, q))
+
+        reader = Process(
+            target=self._mock_read, 
+            args=(q,))
+
+        runner.start()
+        reader.start()
+        runner.join()
+        reader.join()
+        reader.terminate()
+
     @staticmethod
     async def keep_register_to_server(
         executor, loop,
@@ -182,6 +226,25 @@ class BlocClient:
     @classmethod
     def create_function_run_logger(cls, server_url:str, function_run_record_id: str) -> Logger:
         return Logger.New(server_url, function_run_record_id)
+    
+    @classmethod
+    def _mock_read(
+        cls,
+        q: FunctionRunMsgQueue,
+    ):
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s %(message)s")
+
+        while True:
+            msg = q.get()
+            if isinstance(msg, FunctionRunMsg):
+                logging.info(f'received log msg: {msg}')
+            elif isinstance(msg, FunctionRunOpt):
+                logging.info(f'run finished. opt is: {msg}')
+                return
+            elif isinstance(msg, HighReadableFunctionRunProgress):
+                logging.info(f'progress msg: {msg}')
 
     @classmethod
     def _read(
@@ -221,15 +284,17 @@ class BlocClient:
                     function_run_record_id,
                     function_run_opt)
                 if err:
-                    logger.error("report function finished failed")
+                    logger.error(f"report function finished failed: {err}")
+                else:
+                    logger.info(f"report function finished")
+                return
             elif isinstance(msg, HighReadableFunctionRunProgress):
                 func_run_progress = msg
                 err = report_function_run_high_readable_progress(
                     trace_id, span_id,
                     server_url, 
                     function_run_record_id,
-                    func_run_progress
-                )
+                    func_run_progress)
 
     @classmethod
     def _run_function(
