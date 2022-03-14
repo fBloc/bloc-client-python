@@ -1,3 +1,4 @@
+import queue
 from typing import Any, Optional
 from multiprocessing import Queue
 
@@ -45,5 +46,8 @@ class FunctionRunMsgQueue:
             func_run_opt
         )
     
-    def get(self) -> Any:
-        return self._queue.get(True)
+    def get(self, timeout: int) -> Any:
+        try:
+            return self._queue.get(block=True, timeout=timeout)
+        except queue.Empty as err:
+            return None

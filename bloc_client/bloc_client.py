@@ -1,9 +1,11 @@
+import time
 import json
 import os.path
 import asyncio
 import logging
 from copy import deepcopy
 from functools import partial
+from datetime import datetime
 from multiprocessing import Process
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -20,11 +22,8 @@ from bloc_client.function_run_log import Logger, FunctionRunMsg
 from bloc_client.function_to_run_mq_msg import FunctionToRunMqMsg
 from bloc_client.internal.http_util import post_to_server, sync_post_to_server
 from bloc_client.object_storage import get_data_by_object_storage_key, persist_opt_to_server
-from bloc_client.function_run_record import get_functionRunRecord_by_id, report_function_run_finished
-from bloc_client.function_run_process_report import (
-    HighReadableFunctionRunProgress, 
-    report_function_run_high_readable_progress
-)
+from bloc_client.function_run_process_report import HighReadableFunctionRunProgress, report_function_run_high_readable_progress
+from bloc_client.function_run_record import get_functionRunRecord_by_id, report_function_run_finished, report_function_run_heartbeat
 
 ServerBasicPathPrefix = "/api/v1/client/"
 RegisterFuncPath = "register_functions"
@@ -256,9 +255,22 @@ class BlocClient:
         logger: Logger,
         q: FunctionRunMsgQueue,
     ):
+        last_report_heartbeat_time = datetime.now()
         while True:
-            msg = q.get()
-            err = None
+            msg = q.get(3)
+            if not msg or (
+                (datetime.now() - last_report_heartbeat_time).seconds >= 5 and 
+                not isinstance(msg, FunctionRunOpt)
+            ):
+                last_report_heartbeat_time = datetime.now()
+                err = report_function_run_heartbeat(
+                    trace_id, span_id,
+                    server_url, function_run_record_id)
+                if err:
+                    logger.error(f"report client heartbeat failed: {err}")
+
+            if not msg: continue
+
             if isinstance(msg, FunctionRunMsg):
                 logger.add_msg(msg)
             elif isinstance(msg, FunctionRunOpt):
@@ -351,13 +363,17 @@ class BlocClient:
 
         q = FunctionRunMsgQueue.New()
         # TODO 超时检测
+
         runner = Process(
-            target=the_func.exe_func.run, args=(
+            target=the_func.exe_func.run, 
+            args=(
                 the_func.ipts, q,
             )
         )
+
         reader = Process(
-            target=cls._read, args=(
+            target=cls._read, 
+            args=(
                 function_run_record.trace_id,
                 span_id,
                 server_url,

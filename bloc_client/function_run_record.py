@@ -8,6 +8,7 @@ from bloc_client.internal.http_util import syn_get_to_server, sync_post_to_serve
 
 FunctionRunRecordPath = "get_function_run_record_by_id"
 FunctionRunFinishedPath = "function_run_finished"
+ClientAliveHeartBeat = "report_functionExecute_heartbeat"
 
 
 @dataclass
@@ -76,6 +77,22 @@ def report_function_run_finished(
     resp, err = sync_post_to_server(
         server_url + path.join(FunctionRunFinishedPath),
         data,
+        headers={
+            "trace_id": trace_id,
+            "span_id": span_id
+        }
+    )
+    return err
+
+def report_function_run_heartbeat(
+    trace_id: str, 
+    span_id: str,
+    server_url: str,
+    function_run_record_id: str, 
+) -> Exception:
+    resp, err = syn_get_to_server(
+        server_url + path.join(ClientAliveHeartBeat, function_run_record_id),
+        params={},
         headers={
             "trace_id": trace_id,
             "span_id": span_id
