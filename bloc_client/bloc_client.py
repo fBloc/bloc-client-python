@@ -364,6 +364,12 @@ class BlocClient:
         q = FunctionRunMsgQueue.New()
         # TODO 超时检测
 
+        # before start should send client run this function's heartbeat first
+        report_function_run_heartbeat(
+            function_run_record.trace_id, span_id,
+            server_url, msg.FunctionRunRecordID)
+
+        # start run & keep upload intime msg
         runner = Process(
             target=the_func.exe_func.run, 
             args=(
@@ -382,7 +388,7 @@ class BlocClient:
                 q, 
             )
         )
-
+        
         runner.start()
         reader.start()
         runner.join()
