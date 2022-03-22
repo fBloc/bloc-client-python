@@ -6,9 +6,9 @@ import logging
 from copy import deepcopy
 from functools import partial
 from datetime import datetime
-from multiprocessing import Process
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+from multiprocessing import Process, Manager
 from concurrent.futures import ProcessPoolExecutor
 
 
@@ -139,6 +139,7 @@ class BlocClient:
                 ipts[ipt_index].components[component_index].value = params[ipt_index][component_index]
         
         q = FunctionRunMsgQueue.New()
+        runner_return_dict = Manager().dict()
 
         runner = Process(
             target=user_func.run, 
@@ -146,13 +147,15 @@ class BlocClient:
 
         reader = Process(
             target=self._mock_read, 
-            args=(q,))
+            args=(q, runner_return_dict))
 
         runner.start()
         reader.start()
         runner.join()
         reader.join()
         reader.terminate()
+
+        return runner_return_dict['return_value']
 
     @staticmethod
     async def keep_register_to_server(
@@ -230,17 +233,19 @@ class BlocClient:
     def _mock_read(
         cls,
         q: FunctionRunMsgQueue,
+        runner_return_dict,
     ):
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s %(levelname)s %(message)s")
 
         while True:
-            msg = q.get()
+            msg = q.get(3)
             if isinstance(msg, FunctionRunMsg):
                 logging.info(f'received log msg: {msg}')
             elif isinstance(msg, FunctionRunOpt):
                 logging.info(f'run finished. opt is: {msg}')
+                runner_return_dict['return_value'] = msg
                 return
             elif isinstance(msg, HighReadableFunctionRunProgress):
                 logging.info(f'progress msg: {msg}')

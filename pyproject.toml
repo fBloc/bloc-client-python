@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bloc_client"
-version = "0.1.7"
+version = "0.1.8"
 description = "python client sdk for bloc"
 authors = ["pillipanda <pillipanda@126.com>"]
 
