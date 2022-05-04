@@ -7,6 +7,7 @@ from bloc_client.function_run_opt import FunctionRunOpt
 from bloc_client.internal.http_util import syn_get_to_server, sync_post_to_server
 
 FunctionRunRecordPath = "get_function_run_record_by_id"
+FunctionRunStartPath = "function_run_start"
 FunctionRunFinishedPath = "function_run_finished"
 ClientAliveHeartBeat = "report_functionExecute_heartbeat"
 
@@ -64,6 +65,22 @@ def get_functionRunRecord_by_id(
         return function_run_record, None
     except Exception as e:
         return None, e
+
+def report_function_run_start(
+    trace_id: str, 
+    span_id: str,
+    server_url: str,
+    function_run_record_id: str, 
+) -> Exception:
+    _, err = sync_post_to_server(
+        server_url + path.join(FunctionRunStartPath),
+        {"function_run_record_id": function_run_record_id},
+        headers={
+            "trace_id": trace_id,
+            "span_id": span_id
+        }
+    )
+    return err
 
 def report_function_run_finished(
     trace_id: str, 

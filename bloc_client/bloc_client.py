@@ -1,4 +1,3 @@
-import time
 import json
 import os.path
 import asyncio
@@ -23,7 +22,7 @@ from bloc_client.function_to_run_mq_msg import FunctionToRunMqMsg
 from bloc_client.internal.http_util import post_to_server, sync_post_to_server
 from bloc_client.object_storage import get_data_by_object_storage_key, persist_opt_to_server
 from bloc_client.function_run_process_report import HighReadableFunctionRunProgress, report_function_run_high_readable_progress
-from bloc_client.function_run_record import get_functionRunRecord_by_id, report_function_run_finished, report_function_run_heartbeat
+from bloc_client.function_run_record import get_functionRunRecord_by_id, report_function_run_finished, report_function_run_start, report_function_run_heartbeat
 
 ServerBasicPathPrefix = "/api/v1/client/"
 RegisterFuncPath = "register_functions"
@@ -350,6 +349,12 @@ class BlocClient:
         logger.set_trace_id(function_run_record.trace_id)
         span_id = new_uuid()
         logger.set_span_id(span_id)
+
+        err = report_function_run_start(
+            function_run_record.trace_id, span_id,
+            server_url, msg.FunctionRunRecordID)
+        if err:
+            logger.error(f"report function run start to server error: {err}")
 
         for ipt_index, ipt in enumerate(function_run_record.ipt):
             for component_index, component_brief_and_key in enumerate(ipt):
