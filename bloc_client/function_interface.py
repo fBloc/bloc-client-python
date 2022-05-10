@@ -11,8 +11,8 @@ class FunctionInterface(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (
-            hasattr(subclass, 'all_process_stages') and 
-            callable(subclass.all_process_stages) and 
+            hasattr(subclass, 'all_progress_milestones') and 
+            callable(subclass.all_progress_milestones) and 
             hasattr(subclass, 'ipt_config') and 
             callable(subclass.ipt_config) and 
             hasattr(subclass, 'opt_config') and 
@@ -30,7 +30,7 @@ class FunctionInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def all_process_stages(self) -> List[str]:
+    def all_progress_milestones(self) -> List[str]:
         raise NotImplementedError
 
     @abc.abstractmethod

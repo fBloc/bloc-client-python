@@ -21,7 +21,7 @@ from bloc_client.function_run_log import Logger, FunctionRunMsg
 from bloc_client.function_to_run_mq_msg import FunctionToRunMqMsg
 from bloc_client.internal.http_util import post_to_server, sync_post_to_server
 from bloc_client.object_storage import get_data_by_object_storage_key, persist_opt_to_server
-from bloc_client.function_run_process_report import HighReadableFunctionRunProgress, report_function_run_high_readable_progress
+from bloc_client.function_run_progress_report import HighReadableFunctionRunProgress, report_function_run_high_readable_progress
 from bloc_client.function_run_record import get_functionRunRecord_by_id, report_function_run_finished, report_function_run_start, report_function_run_heartbeat
 
 ServerBasicPathPrefix = "/api/v1/client/"
@@ -189,7 +189,7 @@ class BlocClient:
                         description=j.description, 
                         ipts=j.ipts,
                         opts=j.opts,
-                        process_stages=j.process_stages).json_dict())
+                        progress_milestones=j.progress_milestones).json_dict())
         return req
 
     @property

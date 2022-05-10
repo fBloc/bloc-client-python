@@ -82,14 +82,14 @@ def opt_config(self) -> List[FunctionOpt]:
     ]
 ```
 
-4. implement all_process_stages() which define the highly readable describe stages of the function node's run:
+4. implement all_progress_milestones() which define the highly readable describe milestones of the function node's run:
 
-This is designed 4 long run function, during it is running, it can report it's current running stage for the user in frontend to get the information.
+This is designed 4 long run function, during it is running, it can report it's current running milestone for the user in frontend to get the information.
 
 If your function is quick run. maybe no need to set it and just return blank.
 
 ```python
-def all_process_stages(self) -> List[str]:
+def all_progress_milestones(self) -> List[str]:
     return [
         "start parsing ipt", 
         "start do the calculation", 
@@ -110,7 +110,7 @@ def run(
     # queue.report_log(LogLevel.info, "start")
 
     # AllProcessStages() index 0 - "start parsing ipt". which also will be represented in the frontend immediately.
-    queue.report_high_readable_process(process_stage_index=0)
+    queue.report_high_readable_progress(progress_milestone_index=0)
 
     numbersSlice = ipts[0].components[0].value
     if not numbersSlice:
@@ -131,7 +131,7 @@ def run(
             )
         )
         return
-    queue.report_high_readable_process(process_stage_index=1)
+    queue.report_high_readable_progress(progress_milestone_index=1)
 
     ret = 0
     if operator == ArithmeticOperators.addition:
@@ -147,7 +147,7 @@ def run(
         for i in numbersSlice[1:]:
             ret //= i
     
-    queue.report_high_readable_process(process_stage_index=2)
+    queue.report_high_readable_progress(progress_milestone_index=2)
     queue.report_function_run_finished_opt(
         FunctionRunOpt(
             suc=True, 

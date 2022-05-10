@@ -14,7 +14,7 @@ class Function:
     description: str
     ipts: List[FunctionIpt]
     opts: List[FunctionOpt]
-    process_stages: List[str]
+    progress_milestones: List[str]
     exe_func: FunctionInterface=field(default=None)
 
     def json_dict(self):
@@ -24,7 +24,7 @@ class Function:
             'description': self.description,
             'ipts': [i.json_dict() for i in self.ipts],
             'opts': [i.json_dict() for i in self.opts],
-            'process_stages': self.process_stages
+            'progress_milestones': self.progress_milestones
         }
 
 
@@ -47,7 +47,7 @@ class FunctionGroup:
                 description=description, 
                 ipts=func.ipt_config(),
                 opts=func.opt_config(),
-                process_stages=func.all_process_stages(),
+                progress_milestones=func.all_progress_milestones(),
                 exe_func=func
             )
         )

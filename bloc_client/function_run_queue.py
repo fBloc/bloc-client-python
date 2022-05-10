@@ -5,7 +5,7 @@ from multiprocessing import Queue
 from bloc_client.function_run_log import LogLevel
 from bloc_client.function_run_opt import FunctionRunOpt
 from bloc_client.function_run_log import FunctionRunMsg
-from bloc_client.function_run_process_report import HighReadableFunctionRunProgress
+from bloc_client.function_run_progress_report import HighReadableFunctionRunProgress
 
 
 class FunctionRunMsgQueue:
@@ -21,21 +21,21 @@ class FunctionRunMsgQueue:
             FunctionRunMsg(level=log_level, msg=msg)
         )
     
-    def report_high_readable_process(
+    def report_high_readable_progress(
         self,
-        process_percent: Optional[float]=None,
-        process_stage_index: Optional[int]=None,
-        process_high_readable_msg: Optional[str]=None,
+        progress_percent: Optional[float]=None,
+        progress_milestone_index: Optional[int]=None,
+        progress_high_readable_msg: Optional[str]=None,
     ):
         if not any([
-            process_percent, process_stage_index, process_high_readable_msg
+            progress_percent, progress_milestone_index, progress_high_readable_msg
         ]):
             return
         self._queue.put(
             HighReadableFunctionRunProgress(
-                progress_percent=process_percent,
-                msg=process_high_readable_msg,
-                process_stage_index=process_stage_index
+                progress_percent=progress_percent,
+                msg=progress_high_readable_msg,
+                progress_milestone_index=progress_milestone_index
             )
         )
     

@@ -11,17 +11,17 @@ FuncRunProgressReportPath = "report_progress"
 class HighReadableFunctionRunProgress:
     progress_percent: Optional[float]=None
     msg: Optional[str]=None
-    process_stage_index: Optional[int]=None
+    progress_milestone_index: Optional[int]=None
 
     @property
     def to_server_dict(self):
         resp = {}
-        if not any([self.process_stage_index, self.progress_percent, self.msg]):
+        if not any([self.progress_milestone_index, self.progress_percent, self.msg]):
             return resp
         if self.progress_percent:
             resp['progress'] = self.progress_percent
-        if self.process_stage_index:
-            resp['process_stage_index'] = self.process_stage_index
+        if self.progress_milestone_index:
+            resp['progress_milestone_index'] = self.progress_milestone_index
         if self.msg:
             resp['msg'] = self.msg
         return resp
