@@ -20,7 +20,7 @@ class HighReadableFunctionRunProgress:
             return resp
         if self.progress_percent:
             resp['progress'] = self.progress_percent
-        if self.progress_milestone_index:
+        if self.progress_milestone_index is not None and isinstance(self.progress_milestone_index, int):
             resp['progress_milestone_index'] = self.progress_milestone_index
         if self.msg:
             resp['msg'] = self.msg
