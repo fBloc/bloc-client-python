@@ -135,7 +135,10 @@ class BlocClient:
 
             if ipt_index >= len(params): break
             for component_index, _ in enumerate(ipt.components):
-                ipts[ipt_index].components[component_index].value = params[ipt_index][component_index]
+                if component_index >= len(params[ipt_index]):
+                    ipts[ipt_index].components[component_index].value = None
+                else:
+                    ipts[ipt_index].components[component_index].value = params[ipt_index][component_index]
         
         q = FunctionRunMsgQueue.New()
         runner_return_dict = Manager().dict()
