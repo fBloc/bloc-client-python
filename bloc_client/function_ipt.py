@@ -11,8 +11,8 @@ class IptComponent:
     value_type: ValueType
     formcontrol_type: FormControlType
     hint: str
-    default_value: Any
     allow_multi: bool
+    default_value: Optional[Any]=None
     select_options: List[SelectOption]=field(default_factory=list)
     value: Optional[Any]=None
 
