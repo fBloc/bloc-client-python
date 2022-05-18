@@ -100,7 +100,8 @@ class BlocClient:
 
     def register_function_group(self, new_group_name: str) -> FunctionGroup:
         for i in self.function_groups:
-            assert i.name == new_group_name, f"already exist group_name {i.name}, not allow register anymore"
+            if i.name == new_group_name:
+                raise Exception(f"already exist group_name {i.name}, not allow register anymore")
         
         func_group = FunctionGroup(name=new_group_name)
         self.function_groups.append(func_group)

@@ -39,7 +39,8 @@ class FunctionGroup:
         func: FunctionInterface
     ):
         for i in self.functions:
-            assert i.name == name, "not allowed same function name under same group"
+            if i.name == name:
+                raise Exception("not allowed same function name under same group")
         self.functions.append(
             Function(
                 name=name, 
