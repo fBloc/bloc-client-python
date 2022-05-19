@@ -334,14 +334,6 @@ class BlocClient:
         
         logger = cls.create_function_run_logger(
             server_url, msg.FunctionRunRecordID)
-
-        the_func = None
-        for function_group in function_groups:
-            if the_func: break
-            for f in function_group.functions:
-                if f.id != msg.FunctionRunRecordID:
-                    the_func = deepcopy(f)
-                    break
         
         function_run_record, err = get_functionRunRecord_by_id(
             server_url, msg.FunctionRunRecordID)
@@ -349,6 +341,14 @@ class BlocClient:
             logger.error(f"get_functionRunRecord_by_id from server error: {err}")
             #TODO
             pass
+        
+        the_func = None
+        for function_group in function_groups:
+            if the_func: break
+            for f in function_group.functions:
+                if f.id == function_run_record.function_id:
+                    the_func = deepcopy(f)
+                    break
 
         logger.set_trace_id(function_run_record.trace_id)
         span_id = new_uuid()
