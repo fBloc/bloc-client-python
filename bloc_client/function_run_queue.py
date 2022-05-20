@@ -28,7 +28,7 @@ class FunctionRunMsgQueue:
         progress_high_readable_msg: Optional[str]=None,
     ):
         if not any([
-            progress_percent, progress_milestone_index, progress_high_readable_msg
+            progress_percent, progress_milestone_index is not None, progress_high_readable_msg
         ]):
             return
         self._queue.put(

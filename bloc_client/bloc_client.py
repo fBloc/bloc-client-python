@@ -364,7 +364,8 @@ class BlocClient:
             for component_index, component_brief_and_key in enumerate(ipt):
                 value, err = get_data_by_object_storage_key(
                     server_url, component_brief_and_key.object_storage_key,
-                    the_func.ipts[ipt_index].components[component_index].value_type
+                    the_func.ipts[ipt_index].components[component_index].value_type,
+                    the_func.ipts[ipt_index].components[component_index].allow_multi,
                 )
                 if err:
                     logger.error(f"""
