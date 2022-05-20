@@ -2,27 +2,27 @@ import asyncio
 
 from bloc_client import BlocClient
 
-from function import math_calcu
+from bloc_py_tryout.math_calcu import MathCalcu
 
 async def main():
     client_name = "tryout-python"
     bloc_client = BlocClient(name=client_name)
 
-    fake_rabbit_port = 6696
-    fake_bloc_server_port = 80
     bloc_client.get_config_builder(
     ).set_server(
-		"$bloc_server", fake_bloc_server_port,
+		"127.0.0.1", 8080,
     ).set_rabbitMQ(
-        user="$user", password='$password',
-        host="$host", port=fake_rabbit_port
+        user="blocRabbit", password='blocRabbitPasswd',
+        host="127.0.0.1", port=5672
     ).build_up()
 
-    pyClient_func_group = bloc_client.register_function_group("math") # give your function a group name
+    # create a function group
+    pyClient_func_group = bloc_client.register_function_group("math")
+    # register the function node to upper function group
     pyClient_func_group.add_function(
         "calcu", # name your function node's name
 		"receive numbers and do certain math operation to them", # the describe of your function node
-		math_calcu(), # your function implement
+		MathCalcu(), # your function implement
     )
 
     await bloc_client.run()
