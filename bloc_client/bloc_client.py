@@ -296,8 +296,18 @@ class BlocClient:
                         if err:
                             # TODO
                             pass
-                        function_run_opt.optKey_map_briefData[opt_key] = resp['brief']
                         function_run_opt.optKey_map_objectStorageKey[opt_key] = resp['object_storage_key']
+                        if isinstance(opt_value, bool):
+                            function_run_opt.optKey_map_briefData[opt_key] = str(opt_value)
+                        elif isinstance(opt_value, int):
+                            function_run_opt.optKey_map_briefData[opt_key] = str(opt_value)
+                        elif isinstance(opt_value, float):
+                            function_run_opt.optKey_map_briefData[opt_key] = str(opt_value)
+                        elif isinstance(opt_value, str):
+                            function_run_opt.optKey_map_briefData[opt_key] = opt_value[:50]
+                        else:
+                            function_run_opt.optKey_map_briefData[opt_key] = resp['brief']
+
                 err = report_function_run_finished(
                     trace_id, span_id,
                     server_url,
