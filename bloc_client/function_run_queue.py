@@ -46,8 +46,8 @@ class FunctionRunMsgQueue:
             func_run_opt
         )
     
-    def get(self, timeout: int) -> Any:
+    def get(self, block: bool, timeout: Optional[int]=None) -> Any:
         try:
-            return self._queue.get(block=True, timeout=timeout)
+            return self._queue.get(block=block, timeout=timeout)
         except queue.Empty as err:
             return None
